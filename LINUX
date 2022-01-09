@@ -1,0 +1,358 @@
+arr=() #This is the main array of the game. It holds the input numbers
+seed=0 #This is the seed variable and will later be assigned to random
+randint=0 #This is a random integer and will be used by function randomcreator to generate a random number and
+maincondition=1 #As long as this variable is 1, the game will keep going. If the user enters 0, this will turn into 0 and the game will stop.
+generatednums=() #This array holds all called nums.
+
+
+addtoarr(){
+#This function adds the numbers in the output file to the array
+#The inputs of this function will come from function catchinput. That function reads the five numbers on a line and send them to this function to be addded to the arr. It will always have 5 arguments at a time.
+
+
+#If a number is missing (for example 3   6 7; here there is a number missing between 3 and 6), out matrix won't be 5 by 5. We need to exit.
+if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ] ; then
+echo "card format error">&2
+exit 4
+fi
+
+
+for arg in "$@" ; do
+#Checking to see if there are duplicates.
+if [[  ${arr[*]}  =~  "$arg"  ]] ; then
+echo "card format error" >&2
+exit 4
+fi
+#if ! [[ arg =~ ^[0-9]+$ ]];then
+#echo "card format error" >&2
+#exit 4
+#fi
+
+done
+#Checking the range of every number.
+if (( 10#$1 < 10#01 || 10#$1 > 10#15));then
+echo "card format error" >&2
+exit 5
+fi
+
+if  (( $2 < 16 || $2 > 30)) ;then
+echo "card format error" >&2
+exit 5
+fi
+
+if (( $3 > 45)); then
+
+
+echo "card format error" >&2
+exit 5
+fi
+
+if (($4 < 46 || $4 > 60));then
+echo "card format error" >&2
+exit 5
+fi
+
+if (($5 < 61 || $5 > 75));then
+echo "card format error" >&2
+exit 5
+fi
+
+#Adding argument to arr.
+arr+=("$@")
+
+
+}
+
+
+
+randomcreator (){
+#This function creates a random number using random.
+
+
+randint=$((1 + $RANDOM % 75))
+if ((randint >= 1 && randint <= 9 )) ; then
+randint="L0$randint"
+fi
+
+if ((randint >= 10 && randint <= 15 )) ; then
+
+randint="L$randint"
+fi
+
+if ((randint >= 16 && randint <= 30 )) ; then
+randint="I$randint"
+fi
+
+if ((randint >= 31 && randint <= 45 )) ; then
+randint="N$randint"
+fi
+
+if ((randint >= 46 && randint <= 60 )) ; then
+randint="U$randint"
+fi
+
+if ((randint >= 61 && randint <= 75 )) ; then
+randint="X$randint"
+fi
+
+}
+
+
+printgennums (){
+#This function prints the call list. The array generatednumbers holds all random guesses and this function displays them all.
+echo -n  "Call List: "
+s=${#generatednumbers[@]}
+for (( i = 0; i < s; i++ ))
+do
+m=$s-1
+if [[ $i -eq $m ]] ; then
+echo  ${generatednumbers[i]} #After printing the last number in the list, we will go to the next line.
+else
+echo -n  "${generatednumbers[i]} "
+fi
+done
+}
+printarray (){
+n=${#arr[@]} #Size of the arr
+
+#This function prints the main layout on the screen.
+#Local variable => index: which is a way of knowing which index of the arr we're at.
+local index=0
+echo " L   I   N   U   X"
+
+for (( i = 0; i < n; i++  ))
+do
+
+if [ $i -eq 4 ]; then
+echo ${arr[i]}
+
+else
+index=$(($i+1))
+if [[ $(($index % 5)) == 0 ]]; then #making sure we go to the next line after the 5th number in the row. Makes it 5x5.
+echo ${arr[i]}
+
+else
+if [ "${#arr[i]}" -eq 3 ];then
+echo -n "${arr[i]} "
+else
+echo -n "${arr[i]}  "
+fi
+fi
+fi
+
+done
+}
+
+catchinput (){
+#This function reads the file and catches the seeds and input from it.
+
+#Sends and error if no input file or wrong name
+if [ -z $1 ] || [ ! -f "$1" ] || [ ! -r "$1" ] ; then
+  echo "Exit1: Input file: $1 missing or not readable" >&2
+  exit 1
+fi
+
+
+count=0
+#Using a variable called linecount, we count the number of lines in the file. There must be six. If there isn't, we will call an exit.
+linecount=$(wc -l < $1)
+if [ $linecount -ne 6 ] ; then
+echo "card format error.">&2
+exit 4
+
+fi
+while IFS=" " read -r L I N U X rest ; do
+#If the seed is not an integer, that is an error.
+  if ! [[ "$L" =~ ^[0-9]+$ ]] ; then
+echo "seed line format error">&2
+exit 3
+fi
+
+if ! [ -z $rest ] ; then
+if ! [[ "$rest" =~ ^[0-9]+$ ]];then
+echo "card format error">&2
+exit 3
+
+fi
+fi
+
+
+  if [ $count -eq 0 ] ; then
+#The first number in the file is the seed.
+  seed=$L
+
+if ! [ -z $I ];then
+echo "seed line format error">&2
+exit 3
+fi
+  ((count++)) #Incrementing count so that we know we have already gotten the seed.
+  RANDOM=$seed #Setting the seed
+
+  else
+
+ addtoarr $L $I $N $U $X #Adding all inputs to arr which holds all the inputs.
+fi
+
+
+done<$1
+
+}
+
+
+
+
+
+
+
+printer (){
+#Prints the call list and the layout and clears it after every call.
+clear
+printgennums
+printarray
+}
+
+mainprg (){
+#The main program calls the printer
+printer
+
+}
+
+
+
+randomprg (){
+#creates random number, checks to see if it is in array. If it is, it generates another randint then adds randint to the list of called numbers  (generatednumbers). Finally, checks to see if that called random number is in the input matrix.
+
+randomcreator
+echo $randint
+if [[  ${generatednumbers[*]}  =~  ${randint}  ]] ; then
+randomprg
+else
+generatednumbers+=($randint)
+checkfind $randint
+fi
+}
+checkfind (){
+#Checks to see if we can find a called number in the input numbers
+num="$(echo "$1" | cut -c2,3)"
+for i in "${!arr[@]}"
+do
+if [ $num == ${arr[i]} ];then
+
+arr[$i]="${num}m"
+fi
+done
+
+}
+
+checkrow (){
+#Checks row to see if all row elements have been marked. If they have, it displays "WINNER" and exits.
+
+
+#Exiting if all row 1 elements have been marked
+
+
+if [ ${#arr[0]} -eq 3 ] && [ ${#arr[1]} -eq 3 ] && [ ${#arr[2]} -eq 3 ] && [ ${#arr[3]} -eq 3 ] && [ ${#arr[4]} -eq 3 ] ; then
+echo "WINNER"
+exit 0
+fi
+
+#Exiting if all row 2 elements have been marked
+if [ ${#arr[5]} -eq 3 ] && [ ${#arr[6]} -eq 3 ] && [ ${#arr[7]} -eq 3 ] && [ ${#arr[8]} -eq 3 ] && [ ${#arr[9]} -eq 3 ] ; then
+echo "WINNER"
+
+exit 0
+fi
+
+
+
+#Exiting if all row 3 elements have been marked
+if [ ${#arr[10]} -eq 3 ]  && [ ${#arr[11]} -eq 3 ] && [ ${#arr[12]} -eq 3 ] && [ ${#arr[13]} -eq 3 ] && [ ${#arr[14]} -eq 3 ] ; then
+echo "WINNER"
+
+exit 0
+fi
+
+
+#Exiting if all row 4 elements have been marked
+if [ ${#arr[15]} -eq 3 ] && [ ${#arr[16]} -eq 3 ] && [ ${#arr[17]} -eq 3 ] && [ ${#arr[18]} -eq 3 ] && [ ${#arr[19]} -eq 3 ] ; then
+echo "WINNER"
+
+exit 0
+fi
+
+if [ ${#arr[20]} -eq 3 ] && [ ${#arr[21]} -eq 3 ] && [ ${#arr[22]} -eq 3 ] && [ ${#arr[23]} -eq 3 ] && [ ${#arr[24]} -eq 3 ] ; then
+echo "WINNER"
+
+exit 0
+fi
+
+}
+
+checkcolumn () {
+#Checks to see if all element of a column have been marked
+#Checks column 1
+if [ ${#arr[0]} -eq 3 ] && [ ${#arr[5]} -eq 3 ] && [ ${#arr[10]} -eq 3 ] && [ ${#arr[15]} -eq 3 ] && [ ${#arr[20]} -eq 3 ] ; then
+echo "WINNER"
+
+exit 0
+fi
+#Checks column 2
+
+if [ ${#arr[1]} -eq 3 ] && [ ${#arr[6]} -eq 3 ] && [ ${#arr[11]} -eq 3 ] && [ ${#arr[16]} -eq 3 ] && [ ${#arr[21]} -eq 3 ] ; then
+echo "WINNER"
+
+exit 0
+fi
+#Checks column 3
+if [ ${#arr[2]} -eq 3 ] && [ ${#arr[7]} -eq 3 ] && [ ${#arr[12]} -eq 3 ] && [ ${#arr[17]} -eq 3 ] && [ ${#arr[22]} -eq 3 ] ; then
+echo "WINNER"
+
+exit 0
+fi
+#Checks column 4
+if [ ${#arr[3]} -eq 3 ] && [ ${#arr[8]} -eq 3 ] && [ ${#arr[13]} -eq 3 ] && [ ${#arr[18]} -eq 3 ] && [ ${#arr[23]} -eq 3 ] ; then
+echo "WINNER"
+
+exit 0
+fi
+#Checks column 5
+if [ ${#arr[4]} -eq 3 ] && [ ${#arr[9]} -eq 3 ] && [ ${#arr[14]} -eq 3 ] && [ ${#arr[19]} -eq 3 ] && [ ${#arr[24]} -eq 3 ] ; then
+echo "WINNER"
+exit 0
+fi
+}
+
+checkcorner (){
+#Checks corners to see if they have been marked.
+if [ ${#arr[0]} -eq 3 ] && [ ${#arr[4]} -eq 3 ] && [ ${#arr[20]} -eq 3 ] && [ ${#arr[24]} -eq 3 ] ; then
+echo "WINNER"
+
+exit 0
+fi
+
+}
+
+
+catchinput $1
+
+
+
+arr[12]="00m" #Setting the 00 in the middle to be marked
+printarray
+while (( maincondition )); do
+read -p "Enter any character to play or enter q to quit: " c
+if [ "$c" = "q" ]; then
+maincondition=0
+else
+
+randomprg
+mainprg
+checkrow
+checkcolumn
+checkcorner
+
+fi
+
+done
+
+exit 0
